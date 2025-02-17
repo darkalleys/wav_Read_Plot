@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>756</width>
+    <width>666</width>
     <height>534</height>
    </rect>
   </property>
@@ -529,7 +529,7 @@
              </property>
              <layout class="QVBoxLayout" name="verticalLayout" stretch="1,8,1">
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,0">
+               <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,3,1">
                 <item>
                  <widget class="QLabel" name="label_2">
                   <property name="text">
@@ -549,6 +549,25 @@
                    </size>
                   </property>
                  </spacer>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="plotcomboBox">
+                  <item>
+                   <property name="text">
+                    <string>stft</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>fft</string>
+                   </property>
+                  </item>
+                  <item>
+                   <property name="text">
+                    <string>wav</string>
+                   </property>
+                  </item>
+                 </widget>
                 </item>
                </layout>
               </item>

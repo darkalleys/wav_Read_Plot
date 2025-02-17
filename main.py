@@ -204,7 +204,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             t3, samples3 = self.get_HFM_period(signal_type='3')
 
         #混合信号
-        self.mix_samples = samples1 + samples2 + samples3  # 混合信号
+        self.mix_samples = samples1 + samples2 + samples3  # 混合纯仿真信号
         self.t = t1  # t= t1 = t2 = t3
         self.is_add_noise = False
 
@@ -212,10 +212,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.sig = self.mix_samples  # 纯信号
         self.noise = np.zeros_like(self.mix_samples)
         self.noisy_sig = self.mix_samples
-
-        # 添加噪声
-        if self.wavfilepath.text() != '未选择wav文件':
-            self.sig, self.noise, self.noisy_sig = self.add_noise()  # 叠加.wav文件噪声
 
         # 周期数 NP
         NP = self.signalNPSpinBox.value()  # 获取周期数
@@ -226,19 +222,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.noisy_sig = np.tile(self.noisy_sig, NP)  # 将含噪信号重复 NP 次
             self.t = np.tile(self.t, NP)  # 将时间轴重复 NP 次
 
+        # 添加噪声
+        if self.wavfilepath.text() != '未选择wav文件':
+            self.sig, self.noise, self.noisy_sig = self.add_noise()  # 叠加.wav文件噪声
+
         # 绘制stft图
         stft_choose = self.stftcomboBox.currentText()
         if self.is_add_noise == False:
-            self.plot_stft(self.mix_samples)
+            self.plot_fig(self.mix_samples)
         else: 
             if stft_choose == 'sig':
-                self.plot_stft(self.sig)
+                self.plot_fig(self.sig)
             elif stft_choose == 'noise':
-                self.plot_stft(self.noise)
+                self.plot_fig(self.noise)
             elif stft_choose == 'noisy_sig':
-                self.plot_stft(self.noisy_sig)
-        
-        
+                self.plot_fig(self.noisy_sig)
+
+    def plot_fig(self, data):
+        '''
+        绘制信号图
+        :param data: 信号数据
+        :return:
+        '''
+        self.stft_fig.clear()  # 清空画布
+        fig_choose = self.plotcomboBox.currentText()
+        if fig_choose == 'stft':
+            self.plot_stft(data)
+        elif fig_choose == 'fft':
+            self.plot_fft(data)
+        elif fig_choose == 'wav':
+            self.plot_time(data)
+
     def plot_stft(self, data):
         '''
         绘制stft图
@@ -254,11 +268,55 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.stft_fig.subplots_adjust(left=None, bottom=0.2, right=None, top=None, wspace=None, hspace=None)
         ax.cla()  # 删除原图，让画布上只有新的一次的图
         ax.pcolormesh(t, f, np.abs(spectrum), vmin=0, vmax=0.1, shading='gouraud')
-        ax.set_title('STFT Magnitude', fontsize=20)
+        ax.set_title('STFT', fontsize=20)
         ax.set_xlabel('time [sec]', fontsize=20)
         ax.set_ylabel('frequency [Hz]', fontsize=20)
         self.stft_canvas.draw()
 
+    def plot_fft(self, data):
+        '''
+        绘制FFT图
+        :param data: 信号数据
+        :return:
+        '''
+        fs = self.stftfsSpinBox.value()  # 获取采样频率
+        N = len(data)  # 信号长度
+        fft_result = np.fft.fft(data)  # 计算FFT
+        fft_freqs = np.fft.fftfreq(N, 1/fs)  # 计算频率轴
+
+        # 取正频率部分
+        positive_freqs = fft_freqs[:N//2]
+        positive_fft = np.abs(fft_result[:N//2])
+
+        # 清空画布并绘制FFT图
+        self.stft_canvas.figure.clear()
+        ax = self.stft_fig.add_subplot(111)
+        ax.plot(positive_freqs, positive_fft)
+        ax.set_title('FFT', fontsize=20)
+        ax.set_xlabel('Frequency [Hz]', fontsize=20)
+        ax.set_ylabel('Amplitude', fontsize=20)
+        ax.grid(True)
+        self.stft_canvas.draw()
+
+    def plot_time(self, data):
+        '''
+        绘制时域波形图
+        :param data: 信号数据
+        :return:
+        '''
+        fs = self.stftfsSpinBox.value()  # 获取采样频率
+        t = np.arange(len(data)) / fs  # 生成时间轴
+
+        # 清空画布并绘制时域波形图
+        self.stft_canvas.figure.clear()
+        ax = self.stft_fig.add_subplot(111)
+        ax.plot(t, data)
+        ax.set_title('Time Domain Waveform', fontsize=20)
+        ax.set_xlabel('Time [sec]', fontsize=20)
+        ax.set_ylabel('Amplitude', fontsize=20)
+        ax.grid(True)
+        self.stft_canvas.draw()
+        
     def get_NO_period(self, signal_type='1'):
         '''
         获取NO信号周期
@@ -414,6 +472,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 获取仿真信号的参数
         fs = self.signalfsSpinBox.value()  # 仿真信号的采样频率
         T = self.signalTSpinBox.value()  # 仿真信号的单周期长度
+        NP = self.signalNPSpinBox.value()  # 获取周期数
         start_time = self.wavstarttimeSpinBox.value()  # 噪声的起始时间
         snr_db = self.snrSpinBox.value()  # 信噪比（dB）
 
@@ -425,7 +484,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             wav_fs = fs  # 更新采样频率
 
         # 计算需要截取的噪声长度
-        noise_duration = T  # 噪声的持续时间为仿真信号的单周期长度
+        noise_duration = T * NP  # 噪声的持续时间为仿真信号的单周期长度
         noise_samples = int(noise_duration * fs)  # 噪声的样本数
 
         # 计算噪声在.wav文件中的起始样本点
